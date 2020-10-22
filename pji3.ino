@@ -86,7 +86,7 @@ const int oneWireBus = 4;
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
 
-
+//Callbacks do BLE
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
       std::string rxValue = pCharacteristic->getValue();
@@ -120,10 +120,9 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 
 void setup() {
   Serial.begin(115200);
-
+  pinMode(LED, OUTPUT);
   // ---------------- BLE --------------------//
 
-  pinMode(LED, OUTPUT);
 
   // Create the BLE Device
   BLEDevice::init("ESP32 BLE Sementes"); // Give it a name
@@ -158,9 +157,6 @@ void setup() {
   Serial.println("Waiting a client connection to notify..."); 
 
 
-
-  // --------------------------------------//
-
 // ----- EEPROM ----- ///
 
   if (!TEMP.begin(TEMP.length())) {
@@ -185,9 +181,9 @@ void setup() {
     TEMP.put(cont, 0);
     HUMI.put(cont, 0);
     TIME.put(cont, '\0');
-   // ---------- ///
 
 
+// Timer alternativo
   timeval tv;//Cria a estrutura temporaria para funcao abaixo.
   tv.tv_sec = 1603162860;//Atribui minha data atual. 
   settimeofday(&tv, NULL);//Configura o RTC para manter a data atribuida atualizada.
@@ -221,15 +217,11 @@ void setup() {
 
 
 void loop() {
-
+// coleta dados
     sensors.requestTemperatures(); 
     float temperatureC = sensors.getTempCByIndex(0);
     Serial.print(temperatureC);
     timeClient.update();
-
-  // The formattedDate comes with the following format:
-  // 2018-05-28T16:00:13Z
-  // We need to extract date and time
   
   formattedDate = timeClient.getFormattedDate();
   Serial.println(formattedDate);
@@ -257,13 +249,12 @@ void loop() {
     printf("\nUnix Time: %d\n", int32_t(tt));//Mostra na Serial o Unix time
     printf("Data formatada: %s\n", data_formatada);//Mostra na Serial a data formatada
 
-//-------------------------------------------/////
 
 
 /// --------------------------------////
 
     if (deviceConnected) {
-    Serial.println("CONECTOU BLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+    Serial.println("CONECTOU BLEE");
     if (cont == 0) {
       Serial.println("EEPROM VAZIA");
     } else {
@@ -281,9 +272,20 @@ void loop() {
             Serial.print("enviando time: ");    Serial.println(T_TIME);
 
             // Prepare your HTTP POST request data
-            String httpRequestData = "api_key=" + apiKeyValue + "&value1=" + String(T_TEMP)
-                                   + "&value2=" + String(T_HUMI) + "&value3=" + String(T_TIME) + "";
+            String httpRequestData = String(T_TEMP);
             char tx[50];
+            httpRequestData.toCharArray(tx, 50);
+            pCharacteristic->setValue(tx);
+            pCharacteristic->notify(); // Send the value to the app!
+            Serial.print("*** Sent Value: ");
+            Serial.print(httpRequestData);
+            Serial.println(" ***");
+
+
+
+            // Prepare your HTTP POST request data
+            httpRequestData = String(T_TIME);
+            tx[50];
             httpRequestData.toCharArray(tx, 50);
             pCharacteristic->setValue(tx);
     
@@ -424,6 +426,5 @@ void loop() {
     
   }
 
-  //Send an HTTP POST request every 30 seconds
   delay(5000);  
 }
